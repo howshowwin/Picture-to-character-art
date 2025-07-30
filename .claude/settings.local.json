@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(start \"\" \"D:\\2026-2\\project\\Picture-to-character-art\\frontend\\index.html\")",
+      "Bash(explorer:*)",
+      "Bash(taskkill:*)"
+    ],
+    "deny": []
+  }
+}

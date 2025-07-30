@@ -1,0 +1,112 @@
+# Picture/Video to Character Art Generator
+
+A simple local tool for converting images and videos into character art (ASCII/block characters).
+
+## Features
+
+- ✅ **Image Support**: JPG, PNG, GIF, BMP formats
+- ✅ **Video Support**: MP4, AVI, MOV, MKV formats  
+- ✅ **Dual Character Sets**: Block characters (█▓▒░) and ASCII characters (@#S%*+;:,.)
+- ✅ **Video Player**: Play, pause, frame control
+- ✅ **JSON Export**: Complete data structure download
+- ✅ **Drag & Drop**: Direct file drag and drop support
+- ✅ **No File Limits**: Process files of any size or duration
+- ✅ **Adjustable Font Size**: Dynamic preview font size control
+
+## Quick Start
+
+### 1. Install Backend Dependencies
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 2. Start Backend Service
+
+```bash
+cd backend
+python main.py
+```
+
+Backend will start at `http://localhost:8002`
+
+### 3. Open Frontend
+
+Open `frontend/index.html` in your browser!
+
+## How to Use
+
+1. **Select File**: Click to choose file or drag & drop directly
+2. **Adjust Parameters**: 
+   - Width: Control output character width
+   - Type: Choose block characters or ASCII characters
+   - FPS: For videos only, control output frame rate
+   - Font Size: Adjust preview display size (4px-16px)
+3. **Start Conversion**: Click convert button and wait for results
+4. **Preview Results**: 
+   - Images: Direct character art display
+   - Videos: Playable animation preview with controls
+5. **Download JSON**: Get complete conversion data
+
+## File Structure
+
+```
+Picture-to-character-art/
+├── backend/                 # Backend API
+│   ├── main.py             # FastAPI main application
+│   ├── image_converter.py  # Image conversion logic
+│   ├── video_converter.py  # Video conversion logic
+│   └── requirements.txt    # Python dependencies
+├── frontend/               # Frontend interface
+│   ├── index.html         # Main page
+│   └── app.js             # JavaScript logic
+└── README.md              # Documentation
+```
+
+## API Endpoints
+
+### Image Conversion
+- **POST** `/api/v1/convert`
+- Parameters: `image`, `width`, `art_type`
+
+### Video Conversion  
+- **POST** `/api/v1/convert-video`
+- Parameters: `video`, `width`, `fps`, `art_type`
+
+## Technical Details
+
+- **Backend**: FastAPI + OpenCV + Pillow
+- **Frontend**: Pure HTML + CSS + JavaScript
+- **Processing**: Synchronous processing, suitable for personal use
+- **Character Mapping**: Maps pixel brightness to character sets
+- **Font**: Monospace fonts (JetBrains Mono, Fira Code, etc.) for proper alignment
+
+## Notes
+
+- Designed for personal local use
+- Video processing time depends on file size and parameters
+- Recommended video width: 60 or below for better results
+- Please be patient when processing large files
+
+## Troubleshooting
+
+1. **Backend won't start**: Check Python and dependencies installation
+2. **Conversion fails**: Verify file format is supported
+3. **Out of memory**: Reduce width parameter or use smaller files
+
+## Customization
+
+- Adjust character sets according to your needs
+- Modify default parameters to match personal preferences
+- Frontend styles can be freely customized
+- Character mapping algorithm can be fine-tuned
+
+## Character Sets
+
+- **Block Characters**: `[' ', '.', "'", '`', ':', '░', '▒', '▓', '█']`
+- **ASCII Characters**: `[".", ",", ":", ";", "+", "*", "?", "%", "S", "#", "@"]`
+
+---
+
+🎨 Enjoy creating character art!
