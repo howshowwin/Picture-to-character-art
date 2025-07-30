@@ -82,13 +82,13 @@ function handleFileSelect(file) {
 function showFileInfo(file) {
     const fileInfo = document.getElementById('fileInfo');
     const fileSize = (file.size / 1024 / 1024).toFixed(2);
-    const fileType = isVideo ? '影片' : '圖片';
+    const fileType = isVideo ? 'Video' : 'Image';
     
     fileInfo.innerHTML = `
-        <strong>檔案資訊:</strong><br>
-        名稱: ${file.name}<br>
-        類型: ${fileType} (${file.type})<br>
-        大小: ${fileSize} MB
+        <strong>File Info:</strong><br>
+        Name: ${file.name}<br>
+        Type: ${fileType} (${file.type})<br>
+        Size: ${fileSize} MB
     `;
     fileInfo.style.display = 'block';
 }
@@ -96,7 +96,7 @@ function showFileInfo(file) {
 // 轉換檔案
 async function convertFile() {
     if (!currentFile) {
-        showStatus('請先選擇檔案', 'error');
+        showStatus('Please select a file first', 'error');
         return;
     }
     
@@ -119,7 +119,7 @@ async function convertFile() {
     }
     
     try {
-        showStatus('處理中，請稍候...', 'loading');
+        showStatus('Processing, please wait...', 'loading');
         
         const endpoint = isVideo ? '/api/v1/convert-video' : '/api/v1/convert';
         const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -136,14 +136,14 @@ async function convertFile() {
         if (result.status === 'success') {
             resultData = result;
             showResult(result);
-            showStatus('轉換完成！', 'success');
+            showStatus('Conversion completed!', 'success');
         } else {
             throw new Error(result.message || '轉換失敗');
         }
         
     } catch (error) {
         console.error('轉換錯誤:', error);
-        showStatus(`轉換失敗: ${error.message}`, 'error');
+        showStatus(`Conversion failed: ${error.message}`, 'error');
     } finally {
         convertBtn.disabled = false;
     }
@@ -197,8 +197,8 @@ function showFrame() {
     
     artPreview.textContent = frame.art.join('\n');
     frameInfo.innerHTML = `
-        幀 ${currentFrame + 1} / ${frames.length} | 
-        時間: ${frame.timestamp.toFixed(2)}s
+        Frame ${currentFrame + 1} / ${frames.length} | 
+        Time: ${frame.timestamp.toFixed(2)}s
     `;
 }
 
@@ -264,7 +264,7 @@ function lastFrame() {
 // 下載結果
 function downloadResult() {
     if (!resultData) {
-        showStatus('沒有可下載的結果', 'error');
+        showStatus('No result available for download', 'error');
         return;
     }
     
@@ -280,7 +280,7 @@ function downloadResult() {
     document.body.removeChild(link);
     
     URL.revokeObjectURL(url);
-    showStatus('檔案下載完成！', 'success');
+    showStatus('File download completed!', 'success');
 }
 
 // 設定字體大小控制

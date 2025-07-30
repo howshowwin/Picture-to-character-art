@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圖片/影片轉字元藝術</title>
+    <title>Picture/Video to Character Art</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=JetBrains+Mono:wght@100..800&family=Source+Code+Pro:wght@200..900&display=swap" rel="stylesheet">
@@ -252,31 +252,31 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎨 圖片/影片轉字元藝術</h1>
+        <h1>🎨 Picture/Video to Character Art</h1>
         
         <div class="upload-section" id="uploadSection">
-            <h3>選擇檔案</h3>
-            <p>支援圖片: JPG, PNG, GIF, BMP<br>支援影片: MP4, AVI, MOV, MKV</p>
+            <h3>Select File</h3>
+            <p>Supported Images: JPG, PNG, GIF, BMP<br>Supported Videos: MP4, AVI, MOV, MKV</p>
             <input type="file" id="fileInput" class="file-input" accept="image/*,video/*" multiple>
             <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                📁 選擇檔案
+                📁 Select File
             </button>
-            <p style="margin-top: 15px; color: #666;">或直接拖放檔案到這裡</p>
+            <p style="margin-top: 15px; color: #666;">or drag & drop files here</p>
         </div>
 
         <div id="fileInfo" class="file-info" style="display: none;"></div>
 
         <div class="controls">
             <div class="control-group">
-                <label for="width">寬度:</label>
+                <label for="width">Width:</label>
                 <input type="number" id="width" value="100" min="20" max="200">
             </div>
             
             <div class="control-group">
-                <label for="artType">類型:</label>
+                <label for="artType">Type:</label>
                 <select id="artType">
-                    <option value="block">方塊字元</option>
-                    <option value="ascii">ASCII字元</option>
+                    <option value="block">Block Characters</option>
+                    <option value="ascii">ASCII Characters</option>
                 </select>
             </div>
             
@@ -286,27 +286,27 @@
             </div>
             
             <div class="control-group">
-                <label for="fontSize">預覽字體大小:</label>
+                <label for="fontSize">Preview Font Size:</label>
                 <input type="range" id="fontSize" value="8" min="4" max="16" step="1">
                 <span id="fontSizeValue">8px</span>
             </div>
             
             <button class="convert-btn" id="convertBtn" onclick="convertFile()" disabled>
-                🚀 開始轉換
+                🚀 Start Conversion
             </button>
         </div>
 
         <div id="status" class="status"></div>
 
         <div id="previewSection" class="preview-section" style="display: none;">
-            <h3>預覽結果</h3>
+            <h3>Preview Result</h3>
             
             <div id="videoControls" class="video-controls" style="display: none;">
-                <button onclick="playPause()">⏯️ 播放/暫停</button>
-                <button onclick="previousFrame()">⏮️ 上一幀</button>
-                <button onclick="nextFrame()">⏭️ 下一幀</button>
-                <button onclick="firstFrame()">⏪ 第一幀</button>
-                <button onclick="lastFrame()">⏩ 最後一幀</button>
+                <button onclick="playPause()">⏯️ Play/Pause</button>
+                <button onclick="previousFrame()">⏮️ Previous</button>
+                <button onclick="nextFrame()">⏭️ Next</button>
+                <button onclick="firstFrame()">⏪ First</button>
+                <button onclick="lastFrame()">⏩ Last</button>
             </div>
             
             <div id="frameInfo" class="frame-info"></div>
@@ -317,7 +317,7 @@
             
             <div class="download-section">
                 <button class="download-btn" id="downloadBtn" onclick="downloadResult()">
-                    💾 下載 JSON 結果
+                    💾 Download JSON Result
                 </button>
             </div>
         </div>
