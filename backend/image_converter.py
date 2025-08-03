@@ -1,9 +1,9 @@
 from PIL import Image
 import numpy as np
 
-# 字元集合 (從亮到暗排列，因為我們用 255-pixel 來映射)
+# 字元集合 (從暗到亮排列 - 黑色對應空白，白色對應筆畫最多)
 BLOCK_CHARS =  [' ', '.', "'", '`', ':', '░', '▒', '▓', '█']
-ASCII_CHARS = [".", ",", ":", ";", "+", "*", "?", "%", "S", "#", "@"]
+ASCII_CHARS = [" ", ".", ",", ":", ";", "+", "*", "?", "%", "S", "#", "@"]
 
 def convert_image_to_art(image_path: str, width: int = 100, art_type: str = "block") -> list:
     """
@@ -53,8 +53,8 @@ def convert_image_to_art(image_path: str, width: int = 100, art_type: str = "blo
         for i, row in enumerate(pixels):
             line = ""
             for j, pixel in enumerate(row):
-                # 將 0-255 的像素值映射到字元索引（暗像素用空格，亮像素用實心）
-                # 直接映射：0->0, 255->8
+                # 將 0-255 的像素值映射到字元索引
+                # 黑色(0)->索引0(空白)，白色(255)->最後索引(筆畫最多)
                 char_index = int(int(pixel) * (len(chars) - 1) / 255.0)
                 char_index = max(0, min(len(chars) - 1, char_index))  # 確保索引在範圍內
                 line += chars[char_index]
@@ -107,7 +107,8 @@ def convert_frame_to_art(frame, width: int = 60, art_type: str = "block") -> lis
         for row in resized_frame:
             line = ""
             for pixel in row:
-                # 將 0-255 的像素值映射到字元索引（暗像素用空格，亮像素用實心）
+                # 將 0-255 的像素值映射到字元索引
+                # 黑色(0)->索引0(空白)，白色(255)->最後索引(筆畫最多)
                 char_index = int(int(pixel) * (len(chars) - 1) / 255.0)
                 line += chars[char_index]
             art_lines.append(line)
