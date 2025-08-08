@@ -432,6 +432,386 @@ function switchTab(tabName) {
     document.getElementById(tabName + 'Tab').classList.add('active');
 }
 
+// Compress art data to ultra-optimized format
+function compressArtData(artLines, colors, artType) {
+    // Build position map for each character (excluding spaces)
+    const charPositions = {};
+    let position = 0;
+    
+    artLines.forEach((line, rowIdx) => {
+        for (let colIdx = 0; colIdx < line.length; colIdx++) {
+            const char = line[colIdx];
+            // Skip spaces and full-width spaces
+            if (char !== ' ' && char !== '　') {
+                if (!charPositions[char]) {
+                    charPositions[char] = [];
+                }
+                charPositions[char].push(position);
+            }
+            position++;
+        }
+    });
+    
+    // Build compressed color data if available
+    let compressedColors = null;
+    if (colors) {
+        compressedColors = {};
+        position = 0;
+        
+        colors.forEach((row, rowIdx) => {
+            if (row) {
+                row.forEach((color, colIdx) => {
+                    if (color) {
+                        const colorKey = Array.isArray(color) ? color.join(',') : String(color);
+                        if (!compressedColors[colorKey]) {
+                            compressedColors[colorKey] = [];
+                        }
+                        compressedColors[colorKey].push(position);
+                    }
+                    position++;
+                });
+            } else {
+                // Skip positions for null rows
+                position += artLines[rowIdx].length;
+            }
+        });
+    }
+    
+    // Return ultra-compressed format
+    return {
+        w: artLines[0].length,  // width
+        h: artLines.length,     // height
+        c: charPositions,        // character positions
+        p: compressedColors      // color positions (optional)
+    };
+}
+
+// Run-Length Encoding compression
+function rleCompress(artLines) {
+    const runs = [];
+    
+    artLines.forEach(line => {
+        let currentChar = null;
+        let count = 0;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === currentChar) {
+                count++;
+            } else {
+                if (currentChar !== null) {
+                    runs.push([currentChar, count]);
+                }
+                currentChar = char;
+                count = 1;
+            }
+        }
+        
+        // Don't forget the last run in the line
+        if (currentChar !== null) {
+            runs.push([currentChar, count]);
+        }
+        
+        // Add line break marker
+        runs.push(['\n', 1]);
+    });
+    
+    // Remove the last line break
+    if (runs.length > 0 && runs[runs.length - 1][0] === '\n') {
+        runs.pop();
+    }
+    
+    return runs;
+}
+
+// RLE decompression (for reference)
+function rleDecompress(runs) {
+    let result = '';
+    
+    runs.forEach(([char, count]) => {
+        result += char.repeat(count);
+    });
+    
+    return result.split('\n');
+}
+
+// Create ultra-compressed JSON format
+function createUltraCompressedJSON(resultData) {
+    const meta = {
+        v: '2.0',  // version
+        t: resultData.meta.art_type,  // type
+        m: resultData.meta.color_mode  // color mode
+    };
+    
+    if (resultData.type === 'video') {
+        // Video format
+        const frames = resultData.data.frames.map(frame => 
+            compressArtData(frame.art, frame.colors, resultData.meta.art_type)
+        );
+        
+        return {
+            meta: meta,
+            fps: resultData.meta.fps,
+            frames: frames,
+            timestamps: resultData.data.frames.map(f => f.timestamp)
+        };
+    } else {
+        // Image format - just return the compressed data directly
+        const compressed = compressArtData(
+            resultData.data.art, 
+            resultData.data.colors,
+            resultData.meta.art_type
+        );
+        
+        return {
+            meta: meta,
+            data: compressed
+        };
+    }
+}
+
+// Decompress art data from optimized format
+function decompressArtData(compressedData) {
+    // Handle both old and new format
+    let width, height, charPositions, colorPositions;
+    
+    if (compressedData.dimensions) {
+        // Old format
+        const { dimensions, charset, charPositions: chars, colors } = compressedData;
+        width = dimensions.width;
+        height = dimensions.height;
+        charPositions = chars;
+        colorPositions = colors;
+    } else {
+        // New ultra-compressed format
+        width = compressedData.w;
+        height = compressedData.h;
+        charPositions = compressedData.c;
+        colorPositions = compressedData.p;
+    }
+    
+    // Initialize art array with spaces (default to full-width space for Japanese)
+    const defaultSpace = ' ';  // Can be changed to '　' if needed
+    const artLines = Array(height).fill(null).map(() => Array(width).fill(defaultSpace));
+    
+    // Fill in characters based on positions
+    Object.entries(charPositions).forEach(([char, positions]) => {
+        positions.forEach(pos => {
+            const row = Math.floor(pos / width);
+            const col = pos % width;
+            artLines[row][col] = char;
+        });
+    });
+    
+    // Convert to string lines
+    const artStringLines = artLines.map(row => row.join(''));
+    
+    // Decompress colors if available
+    let colorArray = null;
+    if (colorPositions) {
+        colorArray = Array(height).fill(null).map(() => Array(width).fill(null));
+        
+        Object.entries(colorPositions).forEach(([colorKey, positions]) => {
+            const color = colorKey.includes(',') 
+                ? colorKey.split(',').map(Number) 
+                : colorKey;
+            
+            positions.forEach(pos => {
+                const row = Math.floor(pos / width);
+                const col = pos % width;
+                colorArray[row][col] = color;
+            });
+        });
+    }
+    
+    return {
+        art: artStringLines,
+        colors: colorArray
+    };
+}
+
+// Render character art to canvas
+function renderArtToCanvas(artLines, colors, canvas, fontSize = 12, userTextColor = null) {
+    const ctx = canvas.getContext('2d');
+    const canvasSize = 1000; // Fixed size 1000x1000
+    
+    // Set canvas size
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+    
+    // Clear canvas with black background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
+    
+    // Get user-selected color from preview settings
+    const previewTextColor = userTextColor || document.getElementById('previewTextColor')?.value || '#00ff00';
+    
+    // Set font
+    ctx.font = `${fontSize}px 'Courier New', monospace`;
+    ctx.textBaseline = 'top';
+    
+    // Calculate scaling to fit art in 1000x1000
+    const charWidth = fontSize * 0.6; // Approximate character width
+    const lineHeight = fontSize * 1.2;
+    const artWidth = artLines[0].length * charWidth;
+    const artHeight = artLines.length * lineHeight;
+    
+    // Calculate scale to fit
+    const scale = Math.min(canvasSize * 0.9 / artWidth, canvasSize * 0.9 / artHeight);
+    const scaledFontSize = Math.floor(fontSize * scale);
+    const scaledCharWidth = scaledFontSize * 0.6;
+    const scaledLineHeight = scaledFontSize * 1.2;
+    
+    // Update font with scaled size
+    ctx.font = `${scaledFontSize}px 'Courier New', monospace`;
+    
+    // Calculate centered position
+    const totalWidth = artLines[0].length * scaledCharWidth;
+    const totalHeight = artLines.length * scaledLineHeight;
+    const offsetX = (canvasSize - totalWidth) / 2;
+    const offsetY = (canvasSize - totalHeight) / 2;
+    
+    // Check if we're in color mode
+    const isColorMode = resultData && resultData.meta && resultData.meta.color_mode !== 'grayscale';
+    
+    // Draw each character
+    artLines.forEach((line, rowIdx) => {
+        const y = offsetY + rowIdx * scaledLineHeight;
+        
+        for (let colIdx = 0; colIdx < line.length; colIdx++) {
+            const char = line[colIdx];
+            const x = offsetX + colIdx * scaledCharWidth;
+            
+            // Set color
+            if (isColorMode && colors && colors[rowIdx] && colors[rowIdx][colIdx]) {
+                const color = colors[rowIdx][colIdx];
+                if (Array.isArray(color) && color.length === 3) {
+                    ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                } else {
+                    ctx.fillStyle = previewTextColor;
+                }
+            } else {
+                // Use user-selected color for grayscale mode
+                ctx.fillStyle = previewTextColor;
+            }
+            
+            // Draw character
+            if (char !== ' ' && char !== '　') {
+                ctx.fillText(char, x, y);
+            }
+        }
+    });
+}
+
+// Export character art as video
+async function exportAsVideo() {
+    if (!resultData) {
+        showStatus('No result to export', 'error');
+        return;
+    }
+    
+    showStatus('Preparing video export...', 'loading');
+    
+    try {
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const stream = canvas.captureStream(30); // 30 FPS
+        
+        // Check supported codecs
+        let mimeType = 'video/webm';
+        let fileExtension = 'webm';
+        
+        // Try to use MP4 format (H.264)
+        if (MediaRecorder.isTypeSupported('video/mp4')) {
+            mimeType = 'video/mp4';
+            fileExtension = 'mp4';
+        } else if (MediaRecorder.isTypeSupported('video/webm; codecs=h264')) {
+            // WebM with H.264 codec (better compatibility)
+            mimeType = 'video/webm; codecs=h264';
+            fileExtension = 'webm';
+        } else if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9')) {
+            mimeType = 'video/webm; codecs=vp9';
+            fileExtension = 'webm';
+        }
+        
+        // Create media recorder
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: mimeType,
+            videoBitsPerSecond: 5000000 // 5 Mbps
+        });
+        
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+                chunks.push(e.data);
+            }
+        };
+        
+        mediaRecorder.onstop = async () => {
+            // Create video blob
+            const blob = new Blob(chunks, { type: mimeType });
+            
+            // If we got WebM but user wants MP4, we'll need to inform them
+            if (fileExtension === 'webm' && !mimeType.includes('h264')) {
+                showStatus('Note: MP4 format not supported by browser, exported as WebM', 'info');
+            }
+            
+            // Download video
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `character-art-1000x1000.${fileExtension}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showStatus(`Video exported successfully as ${fileExtension.toUpperCase()}!`, 'success');
+        };
+        
+        // Start recording
+        mediaRecorder.start();
+        
+        if (resultData.type === 'video') {
+            // Animate frames
+            const frames = resultData.data.frames;
+            const fps = resultData.meta.fps || 24;
+            const frameDuration = 1000 / fps;
+            let frameIndex = 0;
+            
+            const renderFrame = () => {
+                if (frameIndex >= frames.length) {
+                    // Stop recording after all frames
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 100);
+                    return;
+                }
+                
+                const frame = frames[frameIndex];
+                renderArtToCanvas(frame.art, frame.colors, canvas);
+                frameIndex++;
+                
+                setTimeout(renderFrame, frameDuration);
+            };
+            
+            renderFrame();
+        } else {
+            // Static image - create a 3 second video
+            renderArtToCanvas(resultData.data.art, resultData.data.colors, canvas);
+            
+            setTimeout(() => {
+                mediaRecorder.stop();
+            }, 3000); // 3 seconds
+        }
+        
+    } catch (error) {
+        console.error('Video export error:', error);
+        showStatus(`Video export failed: ${error.message}`, 'error');
+    }
+}
+
 // Export functions
 async function exportAs(format) {
     if (!resultData) {
@@ -480,6 +860,73 @@ async function exportAs(format) {
                 mimeType = 'application/json';
                 break;
                 
+            case 'json-compressed':
+                // Ultra minimal format - only character positions
+                if (resultData.type === 'video') {
+                    // For video: array of frames, each frame is character positions
+                    const frames = resultData.data.frames.map(frame => {
+                        const compressed = {};
+                        let pos = 0;
+                        frame.art.forEach(line => {
+                            for (const char of line) {
+                                if (char !== ' ' && char !== '　') {
+                                    if (!compressed[char]) compressed[char] = [];
+                                    compressed[char].push(pos);
+                                }
+                                pos++;
+                            }
+                        });
+                        return compressed;
+                    });
+                    content = JSON.stringify(frames);
+                } else {
+                    // For image: just character positions
+                    const compressed = {};
+                    let pos = 0;
+                    resultData.data.art.forEach(line => {
+                        for (const char of line) {
+                            if (char !== ' ' && char !== '　') {
+                                if (!compressed[char]) compressed[char] = [];
+                                compressed[char].push(pos);
+                            }
+                            pos++;
+                        }
+                    });
+                    content = JSON.stringify(compressed);
+                }
+                filename = 'art-ultra.json';
+                mimeType = 'application/json';
+                break;
+                
+            case 'rle':
+                // Run-Length Encoding format
+                if (resultData.type === 'video') {
+                    // For video: include metadata and compressed frames
+                    const rleData = {
+                        type: 'video',
+                        fps: resultData.meta.fps,
+                        width: resultData.data.frames[0].art[0].length,
+                        height: resultData.data.frames[0].art.length,
+                        frames: resultData.data.frames.map(frame => ({
+                            timestamp: frame.timestamp,
+                            runs: rleCompress(frame.art)
+                        }))
+                    };
+                    content = JSON.stringify(rleData, null, 2);
+                } else {
+                    // For image: include basic metadata and runs
+                    const rleData = {
+                        type: 'image',
+                        width: resultData.data.art[0].length,
+                        height: resultData.data.art.length,
+                        runs: rleCompress(resultData.data.art)
+                    };
+                    content = JSON.stringify(rleData, null, 2);
+                }
+                filename = 'art-rle.json';
+                mimeType = 'application/json';
+                break;
+                
             case 'ansi':
                 if (resultData.meta.color_mode === 'grayscale') {
                     showStatus('ANSI export requires color mode', 'error');
@@ -492,6 +939,10 @@ async function exportAs(format) {
                 
             case 'gif':
                 showStatus('GIF export coming soon!', 'info');
+                return;
+                
+            case 'video':
+                await exportAsVideo();
                 return;
         }
         

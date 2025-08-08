@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Art Player Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .demo-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .canvas-container {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            min-height: 400px;
+        }
+
+        .my-art-canvas {
+            border: 2px solid #444;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .code-example {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .code-example pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .frame-info {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Character Art Player with GSAP</h1>
+        
+        <div class="demo-section">
+            <h2>簡單範例 - 基本用法</h2>
+            
+            <div class="canvas-container">
+                <canvas class="my-art-canvas"></canvas>
+            </div>
+            
+            <div class="controls">
+                <button onclick="player1.play()">播放</button>
+                <button onclick="player1.pause()">暫停</button>
+                <button onclick="player1.stop()">停止</button>
+                <button onclick="player1.setSpeed(0.5)">0.5x 速度</button>
+                <button onclick="player1.setSpeed(1)">1x 速度</button>
+                <button onclick="player1.setSpeed(2)">2x 速度</button>
+            </div>
+            
+            <div class="code-example">
+                <pre>// 基本用法
+playCharacterArt({
+    path: 'test-animation.json',
+    width: 80,
+    canvasClass: 'my-art-canvas'
+});</pre>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>進階範例 - 自訂選項</h2>
+            
+            <div class="demo-grid">
+                <div>
+                    <div class="input-group">
+                        <label>動畫路徑:</label>
+                        <input type="text" id="animPath" value="test-animation.json">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>每行字符數:</label>
+                        <input type="number" id="charWidth" value="80" min="20" max="200">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Canvas Class:</label>
+                        <input type="text" id="canvasClass" value="custom-canvas">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>FPS:</label>
+                        <input type="number" id="fps" value="30" min="1" max="60">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>顏色:</label>
+                        <input type="color" id="color" value="#00ff00">
+                    </div>
+                    
+                    <button onclick="createCustomPlayer()">創建播放器</button>
+                </div>
+                
+                <div>
+                    <div class="canvas-container">
+                        <canvas class="custom-canvas"></canvas>
+                    </div>
+                    
+                    <div id="customStatus" class="status"></div>
+                </div>
+            </div>
+            
+            <div class="code-example">
+                <pre>// 進階用法
+const player = await playCharacterArt({
+    path: 'animation.json',
+    width: 100,
+    canvasClass: 'custom-canvas',
+    fps: 30,
+    loop: true,
+    color: '#00ff00',
+    fontSize: 14,
+    backgroundColor: '#000000',
+    autoplay: true,
+    onFrame: (current, total) => {
+        console.log(`Frame ${current + 1}/${total}`);
+    },
+    onComplete: () => {
+        console.log('Animation completed');
+    }
+});</pre>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>API 方法說明</h2>
+            
+            <div class="code-example">
+                <pre>// 可用方法
+player.play()      // 播放動畫
+player.pause()     // 暫停動畫
+player.resume()    // 繼續播放
+player.stop()      // 停止並重置
+player.seek(10)    // 跳到第 10 幀
+player.setSpeed(2) // 設定播放速度
+player.destroy()   // 銷毀播放器</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Load Character Art Player -->
+    <script src="art-player.js"></script>
+    
+    <script>
+        let player1, customPlayer;
+        
+        // Initialize basic example
+        async function initBasicExample() {
+            try {
+                player1 = await playCharacterArt({
+                    path: 'test-animation.json',
+                    width: 80,
+                    canvasClass: 'my-art-canvas',
+                    loop: true
+                });
+                console.log('Basic player initialized');
+            } catch (error) {
+                console.error('Failed to initialize basic player:', error);
+            }
+        }
+        
+        // Create custom player
+        async function createCustomPlayer() {
+            try {
+                // Destroy existing player if any
+                if (customPlayer) {
+                    customPlayer.destroy();
+                }
+                
+                const options = {
+                    path: document.getElementById('animPath').value,
+                    width: parseInt(document.getElementById('charWidth').value),
+                    canvasClass: document.getElementById('canvasClass').value,
+                    fps: parseInt(document.getElementById('fps').value),
+                    color: document.getElementById('color').value,
+                    loop: true,
+                    autoplay: true,
+                    onFrame: (current, total) => {
+                        updateStatus(`播放中: ${current + 1}/${total}`, 'success');
+                    },
+                    onComplete: () => {
+                        updateStatus('動畫完成', 'success');
+                    }
+                };
+                
+                customPlayer = await playCharacterArt(options);
+                updateStatus('播放器創建成功！', 'success');
+            } catch (error) {
+                updateStatus(`錯誤: ${error.message}`, 'error');
+                console.error('Failed to create custom player:', error);
+            }
+        }
+        
+        function updateStatus(message, type = '') {
+            const status = document.getElementById('customStatus');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initBasicExample();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (player1) player1.destroy();
+            if (customPlayer) customPlayer.destroy();
+        });
+    </script>
+</body>
+</html>

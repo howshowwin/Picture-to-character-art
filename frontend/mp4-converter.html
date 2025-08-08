@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebM to MP4 Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .info-box h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .conversion-options {
+            background: #0d3a2e;
+            border: 1px solid #0f5132;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .option {
+            margin: 15px 0;
+            padding: 15px;
+            background: #0d1117;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+        }
+
+        .option h4 {
+            margin-top: 0;
+            color: #58a6ff;
+        }
+
+        .option a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+
+        .option a:hover {
+            text-decoration: underline;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        .warning {
+            background: #3a0d0d;
+            border: 1px solid #5c0f0f;
+            color: #f85149;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebM to MP4 轉換指南</h1>
+        <p class="subtitle">由於瀏覽器限制，無法直接錄製 MP4 格式。以下是轉換方案：</p>
+
+        <div class="info-box">
+            <h3>為什麼需要轉換？</h3>
+            <p>大多數瀏覽器的 MediaRecorder API 只支援 WebM 格式錄製。要獲得 MP4 格式，需要進行後續轉換。</p>
+        </div>
+
+        <div class="conversion-options">
+            <h3>轉換方案</h3>
+
+            <div class="option">
+                <h4>方案 1：使用 FFmpeg（推薦）</h4>
+                <p>FFmpeg 是最強大的視頻轉換工具。</p>
+                <div class="code-block">
+# 基本轉換
+ffmpeg -i character-art-1000x1000.webm -c:v libx264 -preset fast -crf 22 character-art-1000x1000.mp4
+
+# 高品質轉換
+ffmpeg -i character-art-1000x1000.webm -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p character-art-1000x1000.mp4
+
+# 保持原始品質
+ffmpeg -i character-art-1000x1000.webm -c:v copy character-art-1000x1000.mp4
+                </div>
+                <p><a href="https://ffmpeg.org/download.html" target="_blank">下載 FFmpeg</a></p>
+            </div>
+
+            <div class="option">
+                <h4>方案 2：線上轉換工具</h4>
+                <ul style="text-align: left;">
+                    <li><a href="https://cloudconvert.com/webm-to-mp4" target="_blank">CloudConvert</a> - 免費且快速</li>
+                    <li><a href="https://convertio.co/webm-mp4/" target="_blank">Convertio</a> - 簡單易用</li>
+                    <li><a href="https://www.onlineconverter.com/webm-to-mp4" target="_blank">Online Converter</a> - 無需註冊</li>
+                </ul>
+            </div>
+
+            <div class="option">
+                <h4>方案 3：使用 VLC 媒體播放器</h4>
+                <ol style="text-align: left;">
+                    <li>開啟 VLC</li>
+                    <li>媒體 → 轉換/儲存</li>
+                    <li>加入 WebM 檔案</li>
+                    <li>選擇 "轉換"</li>
+                    <li>選擇 MP4 格式</li>
+                    <li>開始轉換</li>
+                </ol>
+                <p><a href="https://www.videolan.org/vlc/" target="_blank">下載 VLC</a></p>
+            </div>
+
+            <div class="option">
+                <h4>方案 4：使用 HandBrake</h4>
+                <p>專業的開源視頻轉換軟體，提供詳細的編碼選項。</p>
+                <p><a href="https://handbrake.fr/" target="_blank">下載 HandBrake</a></p>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>未來改進</h3>
+            <p>我們正在研究以下方案來直接支援 MP4：</p>
+            <ul style="text-align: left;">
+                <li>使用 WebAssembly 版本的 FFmpeg 在瀏覽器中轉換</li>
+                <li>使用第三方庫如 mp4box.js 進行封裝</li>
+                <li>等待瀏覽器原生支援 MP4 錄製</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>注意：</strong> WebM 格式在現代瀏覽器中都可以正常播放。如果您的使用場景允許，可以直接使用 WebM 格式。
+        </div>
+
+        <div class="info-box">
+            <h3>快速 Python 轉換腳本</h3>
+            <p>如果您有 Python 環境，可以使用以下腳本批量轉換：</p>
+            <div class="code-block">
+import subprocess
+import os
+from pathlib import Path
+
+def convert_webm_to_mp4(input_file, output_file=None):
+    """Convert WebM to MP4 using ffmpeg"""
+    if output_file is None:
+        output_file = Path(input_file).with_suffix('.mp4')
+    
+    cmd = [
+        'ffmpeg',
+        '-i', input_file,
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '22',
+        '-pix_fmt', 'yuv420p',
+        output_file
+    ]
+    
+    subprocess.run(cmd)
+    print(f"Converted: {input_file} -> {output_file}")
+
+# 使用範例
+convert_webm_to_mp4('character-art-1000x1000.webm')
+            </div>
+        </div>
+    </div>
+</body>
+</html>

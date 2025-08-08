@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字符藝術動畫播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .player-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1200px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .player-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            text-align: center;
+        }
+
+        .player-header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .file-input-area {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .file-drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .file-drop-zone:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+
+        .file-drop-zone.dragover {
+            background: #e8ecff;
+            border-color: #5a67d8;
+            transform: scale(1.02);
+        }
+
+        .file-drop-zone p {
+            color: #6c757d;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .file-drop-zone .icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .display-area {
+            padding: 30px;
+            background: #2d2d2d;
+            min-height: 400px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #artCanvas {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            border: 1px solid #444;
+            max-width: 100%;
+            max-height: 600px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+
+        .control-group input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+
+        .frame-info {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            padding: 15px;
+            background: #e9ecef;
+            text-align: center;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .status-bar.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-bar.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .timeline {
+            width: 100%;
+            height: 40px;
+            background: #e9ecef;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 20px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .timeline-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            cursor: grab;
+        }
+
+        .timeline-thumb:active {
+            cursor: grabbing;
+        }
+
+        .settings-panel {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .setting-item label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .color-mode {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #dee2e6;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #667eea;
+            border-width: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <div class="player-header">
+            <h1>🎬 字符藝術動畫播放器</h1>
+            <p>支援壓縮 JSON 格式動畫播放</p>
+        </div>
+
+        <div class="file-input-area">
+            <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="icon">📁</div>
+                <p>拖放檔案到這裡或點擊選擇</p>
+                <button class="btn">選擇檔案</button>
+                <input type="file" id="fileInput" accept=".json,.txt">
+            </div>
+        </div>
+
+        <div class="display-area" id="displayArea" style="display: none;">
+            <div class="frame-info" id="frameInfo">
+                Frame: <span id="currentFrame">0</span> / <span id="totalFrames">0</span>
+                | FPS: <span id="currentFps">30</span>
+            </div>
+            <canvas id="artCanvas"></canvas>
+        </div>
+
+        <div class="controls" id="controls" style="display: none;">
+            <button class="btn" id="playBtn" onclick="togglePlay()">▶️ 播放</button>
+            <button class="btn" onclick="stop()">⏹️ 停止</button>
+            <button class="btn" onclick="previousFrame()">⬅️ 上一幀</button>
+            <button class="btn" onclick="nextFrame()">➡️ 下一幀</button>
+            
+            <div class="control-group">
+                <label>速度:</label>
+                <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1">
+                <span id="speedValue">1x</span>
+            </div>
+            
+            <div class="control-group">
+                <label>FPS:</label>
+                <input type="number" id="fpsInput" min="1" max="60" value="30">
+            </div>
+        </div>
+
+        <div class="controls" id="timeline" style="display: none;">
+            <div style="width: 100%; padding: 0 20px;">
+                <div class="timeline" onclick="seekToPosition(event)">
+                    <div class="timeline-progress" id="timelineProgress"></div>
+                    <div class="timeline-thumb" id="timelineThumb" style="left: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-panel" id="settings" style="display: none;">
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label>每行字符數:</label>
+                    <input type="number" id="charsPerLine" min="20" max="200" value="80">
+                </div>
+                
+                <div class="setting-item">
+                    <label>字體大小:</label>
+                    <input type="range" id="fontSize" min="8" max="24" value="12">
+                    <span id="fontSizeValue">12px</span>
+                </div>
+                
+                <div class="setting-item">
+                    <label>顏色模式:</label>
+                    <div class="color-mode">
+                        <div class="color-btn active" style="background: #00ff00" data-color="#00ff00"></div>
+                        <div class="color-btn" style="background: #ffffff" data-color="#ffffff"></div>
+                        <div class="color-btn" style="background: #00ffff" data-color="#00ffff"></div>
+                        <div class="color-btn" style="background: #ff00ff" data-color="#ff00ff"></div>
+                        <div class="color-btn" style="background: #ffff00" data-color="#ffff00"></div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <label>循環播放:</label>
+                    <input type="checkbox" id="loopPlayback" checked>
+                </div>
+                
+                <div class="setting-item">
+                    <label>縮放:</label>
+                    <input type="range" id="canvasScale" min="0.5" max="3" step="0.1" value="1">
+                    <span id="scaleValue">1x</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>正在載入動畫...</p>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            準備就緒 - 請選擇檔案
+        </div>
+    </div>
+
+    <script>
+        let frames = [];
+        let currentFrameIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let fps = 30;
+        let speed = 1;
+        let charsPerLine = 80;
+        let totalChars = 0;
+        let canvas = null;
+        let ctx = null;
+        let fontSize = 12;
+        let fontColor = '#00ff00';
+        let canvasScale = 1;
+
+        // File handling
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                loadFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadFile(file);
+            }
+        }
+
+        async function loadFile(file) {
+            showLoader(true);
+            showStatus('正在載入檔案...', 'info');
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                // Detect format and decode
+                if (Array.isArray(data)) {
+                    // Video format - array of frames
+                    frames = data.map(frame => decodeFrame(frame));
+                    showStatus(`載入成功！共 ${frames.length} 幀`, 'success');
+                } else if (data.frames) {
+                    // Has frames property
+                    frames = data.frames.map(frame => decodeFrame(frame));
+                    showStatus(`載入成功！共 ${frames.length} 幀`, 'success');
+                } else {
+                    // Single frame - make it an animation with one frame
+                    frames = [decodeFrame(data)];
+                    showStatus('載入成功！單幀圖片', 'success');
+                }
+                
+                if (frames.length > 0) {
+                    setupPlayer();
+                    displayFrame(0);
+                }
+            } catch (error) {
+                showStatus(`載入失敗: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function decodeFrame(frameData) {
+            // Return the raw frame data for canvas rendering
+            if (frameData.w && frameData.h) {
+                totalChars = frameData.w * frameData.h;
+                charsPerLine = frameData.w;
+                return frameData.c || frameData;
+            } else if (frameData.meta) {
+                totalChars = (frameData.meta.width || charsPerLine) * (frameData.meta.height || Math.ceil(totalChars / charsPerLine));
+                charsPerLine = frameData.meta.width || charsPerLine;
+                return frameData.data || frameData;
+            } else {
+                // Plain character positions - estimate total chars
+                let maxPos = 0;
+                for (const positions of Object.values(frameData)) {
+                    if (Array.isArray(positions)) {
+                        maxPos = Math.max(maxPos, ...positions);
+                    }
+                }
+                totalChars = maxPos + 1;
+                return frameData;
+            }
+        }
+
+        function renderFrameToCanvas(charPositions) {
+            if (!canvas || !ctx) return;
+            
+            // Get user-defined chars per line
+            charsPerLine = parseInt(document.getElementById('charsPerLine').value) || 80;
+            
+            // Calculate rows needed
+            const numRows = Math.ceil(totalChars / charsPerLine);
+            
+            // Make canvas square (width = height)
+            const charWidth = fontSize * 0.6; // Approximate character width
+            const lineHeight = fontSize * 1.2;
+            
+            const canvasSize = Math.max(charsPerLine * charWidth, numRows * lineHeight);
+            
+            // Set canvas dimensions
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            
+            // Apply scale
+            canvas.style.width = (canvasSize * canvasScale) + 'px';
+            canvas.style.height = (canvasSize * canvasScale) + 'px';
+            
+            // Clear canvas
+            ctx.fillStyle = '#2d2d2d';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Set font
+            ctx.font = fontSize + 'px "Courier New", monospace';
+            ctx.fillStyle = fontColor;
+            ctx.textBaseline = 'top';
+            
+            // Create character grid
+            const grid = Array(numRows).fill(null).map(() => Array(charsPerLine).fill(' '));
+            
+            // Fill in characters
+            for (const [char, positions] of Object.entries(charPositions)) {
+                if (Array.isArray(positions)) {
+                    positions.forEach(pos => {
+                        const row = Math.floor(pos / charsPerLine);
+                        const col = pos % charsPerLine;
+                        if (row < numRows && col < charsPerLine) {
+                            grid[row][col] = char;
+                        }
+                    });
+                }
+            }
+            
+            // Draw characters on canvas
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < charsPerLine; col++) {
+                    const char = grid[row][col];
+                    if (char && char !== ' ') {
+                        const x = col * charWidth;
+                        const y = row * lineHeight;
+                        ctx.fillText(char, x, y);
+                    }
+                }
+            }
+        }
+
+        function setupPlayer() {
+            // Initialize canvas
+            canvas = document.getElementById('artCanvas');
+            ctx = canvas.getContext('2d');
+            
+            document.getElementById('displayArea').style.display = 'flex';
+            document.getElementById('controls').style.display = 'flex';
+            document.getElementById('timeline').style.display = 'block';
+            document.getElementById('settings').style.display = 'block';
+            
+            document.getElementById('totalFrames').textContent = frames.length;
+            document.getElementById('charsPerLine').value = charsPerLine;
+            
+            // Setup controls
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                speed = parseFloat(e.target.value);
+                document.getElementById('speedValue').textContent = speed + 'x';
+                if (isPlaying) {
+                    stop();
+                    play();
+                }
+            });
+            
+            document.getElementById('fpsInput').addEventListener('input', (e) => {
+                fps = parseInt(e.target.value);
+                document.getElementById('currentFps').textContent = fps;
+                if (isPlaying) {
+                    stop();
+                    play();
+                }
+            });
+            
+            document.getElementById('charsPerLine').addEventListener('input', (e) => {
+                charsPerLine = parseInt(e.target.value) || 80;
+                displayFrame(currentFrameIndex);
+            });
+            
+            document.getElementById('fontSize').addEventListener('input', (e) => {
+                fontSize = parseInt(e.target.value);
+                document.getElementById('fontSizeValue').textContent = fontSize + 'px';
+                displayFrame(currentFrameIndex);
+            });
+            
+            document.getElementById('canvasScale').addEventListener('input', (e) => {
+                canvasScale = parseFloat(e.target.value);
+                document.getElementById('scaleValue').textContent = canvasScale + 'x';
+                displayFrame(currentFrameIndex);
+            });
+            
+            // Color buttons
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    fontColor = btn.dataset.color;
+                    displayFrame(currentFrameIndex);
+                });
+            });
+        }
+
+        function displayFrame(index) {
+            if (index >= 0 && index < frames.length) {
+                currentFrameIndex = index;
+                renderFrameToCanvas(frames[index]);
+                document.getElementById('currentFrame').textContent = index + 1;
+                updateTimeline();
+            }
+        }
+
+        function updateTimeline() {
+            const progress = (currentFrameIndex / (frames.length - 1)) * 100;
+            document.getElementById('timelineProgress').style.width = progress + '%';
+            document.getElementById('timelineThumb').style.left = progress + '%';
+        }
+
+        function play() {
+            if (frames.length === 0) return;
+            
+            isPlaying = true;
+            document.getElementById('playBtn').innerHTML = '⏸️ 暫停';
+            
+            const interval = 1000 / (fps * speed);
+            playInterval = setInterval(() => {
+                currentFrameIndex++;
+                
+                if (currentFrameIndex >= frames.length) {
+                    if (document.getElementById('loopPlayback').checked) {
+                        currentFrameIndex = 0;
+                    } else {
+                        stop();
+                        return;
+                    }
+                }
+                
+                displayFrame(currentFrameIndex);
+            }, interval);
+        }
+
+        function stop() {
+            isPlaying = false;
+            document.getElementById('playBtn').innerHTML = '▶️ 播放';
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+            currentFrameIndex = 0;
+            displayFrame(0);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        }
+
+        function pause() {
+            isPlaying = false;
+            document.getElementById('playBtn').innerHTML = '▶️ 播放';
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        function nextFrame() {
+            if (frames.length === 0) return;
+            pause();
+            currentFrameIndex = (currentFrameIndex + 1) % frames.length;
+            displayFrame(currentFrameIndex);
+        }
+
+        function previousFrame() {
+            if (frames.length === 0) return;
+            pause();
+            currentFrameIndex = (currentFrameIndex - 1 + frames.length) % frames.length;
+            displayFrame(currentFrameIndex);
+        }
+
+        function seekToPosition(event) {
+            if (frames.length === 0) return;
+            
+            const timeline = event.currentTarget;
+            const rect = timeline.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percentage = x / rect.width;
+            const frameIndex = Math.floor(percentage * frames.length);
+            
+            displayFrame(Math.max(0, Math.min(frameIndex, frames.length - 1)));
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.textContent = message;
+            statusBar.className = 'status-bar ' + type;
+        }
+
+        function showLoader(show) {
+            document.getElementById('loader').className = show ? 'loader active' : 'loader';
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (frames.length === 0) return;
+            
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'ArrowRight':
+                    nextFrame();
+                    break;
+                case 'ArrowLeft':
+                    previousFrame();
+                    break;
+                case 'Home':
+                    displayFrame(0);
+                    break;
+                case 'End':
+                    displayFrame(frames.length - 1);
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compressed JSON Art Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #58a6ff;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            background: #161b22;
+            border: 2px dashed #30363d;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #58a6ff;
+            background: #1c2128;
+        }
+
+        .upload-area.dragover {
+            border-color: #58a6ff;
+            background: #1c2128;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2ea043;
+        }
+
+        .info-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .art-preview {
+            background: #000;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.0;
+            overflow-x: auto;
+            white-space: pre;
+            min-height: 400px;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .frame-info {
+            margin-left: auto;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .stat-label {
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #c9d1d9;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Compressed JSON Art Viewer</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>拖放壓縮的 JSON 檔案到這裡</p>
+            <p>或</p>
+            <input type="file" id="fileInput" class="file-input" accept=".json">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">選擇檔案</button>
+        </div>
+
+        <div id="infoSection" class="info-section" style="display: none;">
+            <h3>檔案資訊</h3>
+            <div id="fileStats" class="stats"></div>
+        </div>
+
+        <div id="previewSection" style="display: none;">
+            <div class="controls" id="videoControls" style="display: none;">
+                <button class="btn" onclick="previousFrame()">上一幀</button>
+                <button class="btn" onclick="playPause()" id="playBtn">播放</button>
+                <button class="btn" onclick="nextFrame()">下一幀</button>
+                <span class="frame-info" id="frameInfo"></span>
+            </div>
+            
+            <div class="art-preview" id="artPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        let compressedData = null;
+        let decompressedData = null;
+        let currentFrame = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            // File input
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+        });
+
+        // Handle file
+        function handleFile(file) {
+            if (!file.name.endsWith('.json')) {
+                alert('請選擇 JSON 檔案');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    loadCompressedData(data);
+                } catch (error) {
+                    alert('無法解析 JSON 檔案: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Load compressed data
+        function loadCompressedData(data) {
+            compressedData = data;
+            
+            // Show file info
+            showFileInfo();
+            
+            // Decompress and display
+            if (data.type === 'video') {
+                // Video with multiple frames
+                decompressedData = {
+                    frames: data.frames.map(frame => ({
+                        timestamp: frame.timestamp,
+                        ...decompressArtData(frame.data)
+                    }))
+                };
+                
+                document.getElementById('videoControls').style.display = 'flex';
+                currentFrame = 0;
+                showFrame();
+            } else {
+                // Single image
+                decompressedData = decompressArtData(data.data);
+                document.getElementById('videoControls').style.display = 'none';
+                showArt(decompressedData.art, decompressedData.colors);
+            }
+            
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        // Decompress art data
+        function decompressArtData(compressedData) {
+            // Handle both old and new format
+            let width, height, charPositions, colorPositions;
+            
+            if (compressedData.dimensions) {
+                // Old format
+                const { dimensions, charset, charPositions: chars, colors } = compressedData;
+                width = dimensions.width;
+                height = dimensions.height;
+                charPositions = chars;
+                colorPositions = colors;
+            } else {
+                // New ultra-compressed format
+                width = compressedData.w;
+                height = compressedData.h;
+                charPositions = compressedData.c;
+                colorPositions = compressedData.p;
+            }
+            
+            // Initialize art array with spaces
+            const defaultSpace = ' ';  // Can be changed to '　' if needed
+            const artLines = Array(height).fill(null).map(() => Array(width).fill(defaultSpace));
+            
+            // Fill in characters based on positions
+            Object.entries(charPositions).forEach(([char, positions]) => {
+                positions.forEach(pos => {
+                    const row = Math.floor(pos / width);
+                    const col = pos % width;
+                    artLines[row][col] = char;
+                });
+            });
+            
+            // Convert to string lines
+            const artStringLines = artLines.map(row => row.join(''));
+            
+            // Decompress colors if available
+            let colorArray = null;
+            if (colorPositions) {
+                colorArray = Array(height).fill(null).map(() => Array(width).fill(null));
+                
+                Object.entries(colorPositions).forEach(([colorKey, positions]) => {
+                    const color = colorKey.includes(',') 
+                        ? colorKey.split(',').map(Number) 
+                        : colorKey;
+                    
+                    positions.forEach(pos => {
+                        const row = Math.floor(pos / width);
+                        const col = pos % width;
+                        colorArray[row][col] = color;
+                    });
+                });
+            }
+            
+            return {
+                art: artStringLines,
+                colors: colorArray
+            };
+        }
+
+        // Show file info
+        function showFileInfo() {
+            const infoSection = document.getElementById('infoSection');
+            const fileStats = document.getElementById('fileStats');
+            
+            let stats = [];
+            
+            // Check format type
+            const isVideo = compressedData.frames !== undefined;
+            const isNewFormat = compressedData.meta && compressedData.meta.v === '2.0';
+            
+            if (isVideo) {
+                const firstFrame = compressedData.frames[0];
+                stats.push({
+                    label: '類型',
+                    value: '動畫'
+                });
+                stats.push({
+                    label: '總幀數',
+                    value: compressedData.frames.length
+                });
+                stats.push({
+                    label: '尺寸',
+                    value: `${firstFrame.w || firstFrame.data.dimensions.width} × ${firstFrame.h || firstFrame.data.dimensions.height}`
+                });
+                stats.push({
+                    label: 'FPS',
+                    value: compressedData.fps || compressedData.meta.fps || 24
+                });
+            } else {
+                const data = compressedData.data || compressedData;
+                stats.push({
+                    label: '類型',
+                    value: '靜態圖片'
+                });
+                stats.push({
+                    label: '尺寸',
+                    value: `${data.w || data.dimensions.width} × ${data.h || data.dimensions.height}`
+                });
+            }
+            
+            // Count unique characters
+            const data = compressedData.data || compressedData.frames[0];
+            const charCount = Object.keys(data.c || data.charPositions || {}).length;
+            stats.push({
+                label: '使用字符數',
+                value: charCount
+            });
+            
+            stats.push({
+                label: '格式版本',
+                value: isNewFormat ? '2.0 (Ultra)' : '1.0'
+            });
+            
+            fileStats.innerHTML = stats.map(stat => `
+                <div class="stat-item">
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-value">${stat.value}</div>
+                </div>
+            `).join('');
+            
+            infoSection.style.display = 'block';
+        }
+
+        // Show art
+        function showArt(artLines, colors) {
+            const artPreview = document.getElementById('artPreview');
+            
+            if (colors) {
+                // Render with colors
+                artPreview.innerHTML = '';
+                artLines.forEach((line, rowIdx) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.style.height = '1em';
+                    lineDiv.style.lineHeight = '1';
+                    
+                    for (let colIdx = 0; colIdx < line.length; colIdx++) {
+                        const char = line[colIdx];
+                        const span = document.createElement('span');
+                        span.textContent = char === ' ' ? '\u00A0' : char;
+                        
+                        if (colors[rowIdx] && colors[rowIdx][colIdx]) {
+                            const color = colors[rowIdx][colIdx];
+                            if (Array.isArray(color) && color.length === 3) {
+                                span.style.color = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                            }
+                        }
+                        
+                        lineDiv.appendChild(span);
+                    }
+                    
+                    artPreview.appendChild(lineDiv);
+                });
+            } else {
+                // Plain text
+                artPreview.textContent = artLines.join('\n');
+            }
+        }
+
+        // Video controls
+        function showFrame() {
+            if (!decompressedData || !decompressedData.frames) return;
+            
+            const frames = decompressedData.frames;
+            if (currentFrame >= frames.length) currentFrame = 0;
+            if (currentFrame < 0) currentFrame = frames.length - 1;
+            
+            const frame = frames[currentFrame];
+            const frameInfo = document.getElementById('frameInfo');
+            
+            showArt(frame.art, frame.colors);
+            frameInfo.textContent = `幀 ${currentFrame + 1} / ${frames.length} | 時間: ${frame.timestamp.toFixed(2)}s`;
+        }
+
+        function playPause() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            if (!decompressedData || !decompressedData.frames) return;
+            
+            isPlaying = true;
+            document.getElementById('playBtn').textContent = '暫停';
+            
+            const fps = compressedData.meta.fps || 24;
+            const interval = 1000 / fps;
+            
+            playInterval = setInterval(() => {
+                currentFrame++;
+                if (currentFrame >= decompressedData.frames.length) {
+                    currentFrame = 0;
+                }
+                showFrame();
+            }, interval);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '播放';
+            
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        function nextFrame() {
+            stopPlay();
+            currentFrame++;
+            showFrame();
+        }
+
+        function previousFrame() {
+            stopPlay();
+            currentFrame--;
+            showFrame();
+        }
+    </script>
+</body>
+</html>

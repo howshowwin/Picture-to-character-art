@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLE Character Art Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #58a6ff;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            background: #161b22;
+            border: 2px dashed #30363d;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #58a6ff;
+            background: #1c2128;
+        }
+
+        .upload-area.dragover {
+            border-color: #58a6ff;
+            background: #1c2128;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2ea043;
+        }
+
+        .info-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .art-preview {
+            background: #000;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.0;
+            overflow-x: auto;
+            white-space: pre;
+            min-height: 400px;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .frame-info {
+            margin-left: auto;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .stat-label {
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #c9d1d9;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .rle-info {
+            background: #0d3a2e;
+            border: 1px solid #0f5132;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .rle-info h4 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .compression-stats {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RLE Character Art Viewer</h1>
+        <p style="text-align: center; color: #8b949e; margin-bottom: 30px;">
+            檢視和播放 Run-Length Encoded 字符藝術檔案
+        </p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>拖放 RLE JSON 檔案到這裡</p>
+            <p>或</p>
+            <input type="file" id="fileInput" class="file-input" accept=".json">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">選擇檔案</button>
+        </div>
+
+        <div id="infoSection" class="info-section" style="display: none;">
+            <h3>檔案資訊</h3>
+            <div id="fileStats" class="stats"></div>
+            
+            <div class="rle-info">
+                <h4>RLE 壓縮統計</h4>
+                <div id="compressionStats" class="compression-stats"></div>
+            </div>
+        </div>
+
+        <div id="previewSection" style="display: none;">
+            <div class="controls" id="videoControls" style="display: none;">
+                <button class="btn" onclick="previousFrame()">上一幀</button>
+                <button class="btn" onclick="playPause()" id="playBtn">播放</button>
+                <button class="btn" onclick="nextFrame()">下一幀</button>
+                <span class="frame-info" id="frameInfo"></span>
+            </div>
+            
+            <div class="art-preview" id="artPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        let rleData = null;
+        let decompressedFrames = null;
+        let currentFrame = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            // File input
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+        });
+
+        // Handle file
+        function handleFile(file) {
+            if (!file.name.endsWith('.json')) {
+                alert('請選擇 JSON 檔案');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    loadRLEData(data);
+                } catch (error) {
+                    alert('無法解析 JSON 檔案: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Load RLE data
+        function loadRLEData(data) {
+            rleData = data;
+            
+            // Show file info
+            showFileInfo();
+            
+            // Decompress and display
+            if (data.type === 'video') {
+                // Video with multiple frames
+                decompressedFrames = data.frames.map(frame => ({
+                    timestamp: frame.timestamp,
+                    art: rleDecompress(frame.runs)
+                }));
+                
+                document.getElementById('videoControls').style.display = 'flex';
+                currentFrame = 0;
+                showFrame();
+            } else {
+                // Single image
+                const decompressed = rleDecompress(data.runs);
+                showArt(decompressed);
+                document.getElementById('videoControls').style.display = 'none';
+            }
+            
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        // RLE decompression
+        function rleDecompress(runs) {
+            let result = '';
+            
+            runs.forEach(([char, count]) => {
+                result += char.repeat(count);
+            });
+            
+            return result.split('\n');
+        }
+
+        // Show file info
+        function showFileInfo() {
+            const infoSection = document.getElementById('infoSection');
+            const fileStats = document.getElementById('fileStats');
+            const compressionStats = document.getElementById('compressionStats');
+            
+            let stats = [];
+            
+            stats.push({
+                label: '類型',
+                value: rleData.type === 'video' ? '動畫' : '靜態圖片'
+            });
+            
+            stats.push({
+                label: '尺寸',
+                value: `${rleData.width} × ${rleData.height}`
+            });
+            
+            if (rleData.type === 'video') {
+                stats.push({
+                    label: '總幀數',
+                    value: rleData.frames.length
+                });
+                stats.push({
+                    label: 'FPS',
+                    value: rleData.fps || 24
+                });
+            }
+            
+            // Calculate compression statistics
+            let totalRuns = 0;
+            let totalChars = 0;
+            let runLengths = [];
+            
+            if (rleData.type === 'video') {
+                rleData.frames.forEach(frame => {
+                    frame.runs.forEach(([char, count]) => {
+                        totalRuns++;
+                        totalChars += count;
+                        runLengths.push(count);
+                    });
+                });
+            } else {
+                rleData.runs.forEach(([char, count]) => {
+                    totalRuns++;
+                    totalChars += count;
+                    runLengths.push(count);
+                });
+            }
+            
+            const avgRunLength = (totalChars / totalRuns).toFixed(2);
+            const maxRunLength = Math.max(...runLengths);
+            const minRunLength = Math.min(...runLengths);
+            
+            stats.push({
+                label: '總行程數',
+                value: totalRuns
+            });
+            
+            stats.push({
+                label: '壓縮比',
+                value: `${((1 - totalRuns * 2 / totalChars) * 100).toFixed(1)}%`
+            });
+            
+            fileStats.innerHTML = stats.map(stat => `
+                <div class="stat-item">
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-value">${stat.value}</div>
+                </div>
+            `).join('');
+            
+            // Compression statistics
+            compressionStats.innerHTML = `
+                總字符數: ${totalChars.toLocaleString()}<br>
+                總行程數: ${totalRuns.toLocaleString()}<br>
+                平均行程長度: ${avgRunLength}<br>
+                最長行程: ${maxRunLength}<br>
+                最短行程: ${minRunLength}<br>
+                壓縮效率: ${((totalChars - totalRuns * 2) / totalChars * 100).toFixed(1)}%
+            `;
+            
+            infoSection.style.display = 'block';
+        }
+
+        // Show art
+        function showArt(artLines) {
+            const artPreview = document.getElementById('artPreview');
+            artPreview.textContent = artLines.join('\n');
+        }
+
+        // Video controls
+        function showFrame() {
+            if (!decompressedFrames) return;
+            
+            if (currentFrame >= decompressedFrames.length) currentFrame = 0;
+            if (currentFrame < 0) currentFrame = decompressedFrames.length - 1;
+            
+            const frame = decompressedFrames[currentFrame];
+            const frameInfo = document.getElementById('frameInfo');
+            
+            showArt(frame.art);
+            frameInfo.textContent = `幀 ${currentFrame + 1} / ${decompressedFrames.length} | 時間: ${frame.timestamp.toFixed(2)}s`;
+        }
+
+        function playPause() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            if (!decompressedFrames) return;
+            
+            isPlaying = true;
+            document.getElementById('playBtn').textContent = '暫停';
+            
+            const fps = rleData.fps || 24;
+            const interval = 1000 / fps;
+            
+            playInterval = setInterval(() => {
+                currentFrame++;
+                if (currentFrame >= decompressedFrames.length) {
+                    currentFrame = 0;
+                }
+                showFrame();
+            }, interval);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '播放';
+            
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        function nextFrame() {
+            stopPlay();
+            currentFrame++;
+            showFrame();
+        }
+
+        function previousFrame() {
+            stopPlay();
+            currentFrame--;
+            showFrame();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Art Video Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 30px;
+        }
+
+        .canvas-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        canvas {
+            border: 2px solid #30363d;
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #2ea043;
+        }
+
+        .btn:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+        }
+
+        .btn.recording {
+            background: #da3633;
+        }
+
+        .btn.recording:hover {
+            background: #f85149;
+        }
+
+        .info-box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .info-box h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .test-input {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 10px;
+            color: #c9d1d9;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            min-height: 100px;
+            resize: vertical;
+            margin: 10px 0;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.success {
+            background: #0d3a2e;
+            border: 1px solid #0f5132;
+            color: #58d1c9;
+            display: block;
+        }
+
+        .status.error {
+            background: #3a0d0d;
+            border: 1px solid #5c0f0f;
+            color: #f85149;
+            display: block;
+        }
+
+        .preview-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .preview-stat {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+        }
+
+        .preview-stat label {
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        .preview-stat value {
+            color: #c9d1d9;
+            font-size: 16px;
+            font-weight: bold;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Character Art Video Preview</h1>
+        <p style="color: #8b949e;">預覽字符藝術如何轉換為 1000×1000 視頻</p>
+
+        <div class="canvas-container">
+            <canvas id="previewCanvas" width="1000" height="1000"></canvas>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="renderSample()">
+                <i>🎨</i> 渲染範例
+            </button>
+            <button class="btn" onclick="renderCustom()">
+                <i>✏️</i> 渲染自定義文字
+            </button>
+            <button class="btn" onclick="startAnimation()">
+                <i>▶️</i> 播放動畫
+            </button>
+            <button class="btn" onclick="stopAnimation()">
+                <i>⏸️</i> 停止動畫
+            </button>
+            <button class="btn" id="recordBtn" onclick="toggleRecording()">
+                <i>🔴</i> 開始錄製
+            </button>
+            <button class="btn" onclick="downloadVideo()" id="downloadBtn" disabled>
+                <i>💾</i> 下載視頻
+            </button>
+        </div>
+
+        <div class="info-box">
+            <h3>自定義文字</h3>
+            <textarea class="test-input" id="customText" placeholder="輸入您的字符藝術（每行會自動居中）">
+　　　つ　　の　　愛　　
+　　　　る　　　　雲　　
+　　お　　　　　　龍　　
+闇　　　　　　　　　　光</textarea>
+            
+            <div class="preview-info">
+                <div class="preview-stat">
+                    <label>畫布大小</label>
+                    <value>1000 × 1000 px</value>
+                </div>
+                <div class="preview-stat">
+                    <label>背景顏色</label>
+                    <value>黑色 (#000000)</value>
+                </div>
+                <div class="preview-stat">
+                    <label>文字顏色</label>
+                    <value>綠色 (#00ff00)</value>
+                </div>
+                <div class="preview-stat">
+                    <label>字體</label>
+                    <value>Courier New</value>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        let animationId = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordedBlob = null;
+
+        // Render function (same as in enhanced-app.js)
+        function renderArtToCanvas(artLines, colors, canvas, fontSize = 12) {
+            const ctx = canvas.getContext('2d');
+            const canvasSize = 1000;
+            
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+            
+            ctx.font = `${fontSize}px 'Courier New', monospace`;
+            ctx.textBaseline = 'top';
+            
+            const charWidth = fontSize * 0.6;
+            const lineHeight = fontSize * 1.2;
+            const artWidth = Math.max(...artLines.map(line => line.length)) * charWidth;
+            const artHeight = artLines.length * lineHeight;
+            
+            const scale = Math.min(canvasSize * 0.9 / artWidth, canvasSize * 0.9 / artHeight);
+            const scaledFontSize = Math.floor(fontSize * scale);
+            const scaledCharWidth = scaledFontSize * 0.6;
+            const scaledLineHeight = scaledFontSize * 1.2;
+            
+            ctx.font = `${scaledFontSize}px 'Courier New', monospace`;
+            
+            const totalHeight = artLines.length * scaledLineHeight;
+            const offsetY = (canvasSize - totalHeight) / 2;
+            
+            artLines.forEach((line, rowIdx) => {
+                const y = offsetY + rowIdx * scaledLineHeight;
+                const lineWidth = line.length * scaledCharWidth;
+                const offsetX = (canvasSize - lineWidth) / 2;
+                
+                for (let colIdx = 0; colIdx < line.length; colIdx++) {
+                    const char = line[colIdx];
+                    const x = offsetX + colIdx * scaledCharWidth;
+                    
+                    if (colors && colors[rowIdx] && colors[rowIdx][colIdx]) {
+                        const color = colors[rowIdx][colIdx];
+                        if (Array.isArray(color) && color.length === 3) {
+                            ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                        } else {
+                            ctx.fillStyle = '#00ff00';
+                        }
+                    } else {
+                        ctx.fillStyle = '#00ff00';
+                    }
+                    
+                    if (char !== ' ' && char !== '　') {
+                        ctx.fillText(char, x, y);
+                    }
+                }
+            });
+        }
+
+        // Render sample art
+        function renderSample() {
+            const sampleArt = [
+                "╔═══════════════════════════════╗",
+                "║   Character Art Video Demo    ║",
+                "╠═══════════════════════════════╣",
+                "║         ∩___∩                 ║",
+                "║         | ・x・|                ║",
+                "║        ／　　　 ＼              ║",
+                "║       │　　　　　│            ║",
+                "║         ∪￣∪                   ║",
+                "║                               ║",
+                "║    1000×1000 Video Export     ║",
+                "╚═══════════════════════════════╝"
+            ];
+            
+            const canvas = document.getElementById('previewCanvas');
+            renderArtToCanvas(sampleArt, null, canvas, 20);
+            showStatus('範例已渲染', 'success');
+        }
+
+        // Render custom text
+        function renderCustom() {
+            const customText = document.getElementById('customText').value;
+            const lines = customText.split('\n').filter(line => line.length > 0);
+            
+            if (lines.length === 0) {
+                showStatus('請輸入一些文字', 'error');
+                return;
+            }
+            
+            const canvas = document.getElementById('previewCanvas');
+            renderArtToCanvas(lines, null, canvas, 20);
+            showStatus('自定義文字已渲染', 'success');
+        }
+
+        // Animation demo
+        let animationFrame = 0;
+        function startAnimation() {
+            if (animationId) return;
+            
+            const frames = [
+                ["    ◐    ", "         ", "         "],
+                ["         ", "    ◓    ", "         "],
+                ["         ", "         ", "    ◑    "],
+                ["         ", "    ◒    ", "         "],
+            ];
+            
+            const animate = () => {
+                const canvas = document.getElementById('previewCanvas');
+                renderArtToCanvas(frames[animationFrame % frames.length], null, canvas, 50);
+                animationFrame++;
+                animationId = requestAnimationFrame(animate);
+            };
+            
+            animate();
+            showStatus('動畫播放中...', 'success');
+        }
+
+        function stopAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                showStatus('動畫已停止', 'success');
+            }
+        }
+
+        // Recording functions
+        function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            const canvas = document.getElementById('previewCanvas');
+            const stream = canvas.captureStream(30);
+            
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm',
+                videoBitsPerSecond: 5000000
+            });
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = () => {
+                recordedBlob = new Blob(recordedChunks, { type: 'video/webm' });
+                document.getElementById('downloadBtn').disabled = false;
+                showStatus('錄製完成！可以下載視頻了', 'success');
+            };
+            
+            mediaRecorder.start();
+            document.getElementById('recordBtn').textContent = '🔴 停止錄製';
+            document.getElementById('recordBtn').classList.add('recording');
+            showStatus('錄製中...', 'success');
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('recordBtn').textContent = '🔴 開始錄製';
+                document.getElementById('recordBtn').classList.remove('recording');
+            }
+        }
+
+        function downloadVideo() {
+            if (!recordedBlob) return;
+            
+            const url = URL.createObjectURL(recordedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'character-art-1000x1000.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showStatus('視頻已下載', 'success');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        // Initial render
+        window.onload = () => {
+            renderSample();
+        };
+    </script>
+</body>
+</html>
